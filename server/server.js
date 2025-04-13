@@ -11,7 +11,14 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://notesapp-client.onrender.com', 'https://notesapp-api.onrender.com']
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
+}));
 app.use(express.json());
 
 // Connection options

@@ -68,45 +68,38 @@ router.post('/', auth, async (req, res) => {
 // @desc    Update a note
 // @access  Private
 router.put('/:id', auth, async (req, res) => {
-  const { title, content } = req.body;
-  
-  // Build note object with the fields that should be updated
-  const noteFields = {};
-  if (title !== undefined) noteFields.title = title;
-  if (content !== undefined) noteFields.content = content;
-  noteFields.updatedAt = Date.now();
-  
   try {
-    console.log('Updating note with ID:', req.params.id);
-    console.log('Update fields:', noteFields);
+    console.log('PUT request received for note ID:', req.params.id);
+    console.log('Request body:', req.body);
     
+    // Find the note by ID
     let note = await Note.findById(req.params.id);
     
     // Check if note exists
     if (!note) {
+      console.log('Note not found with ID:', req.params.id);
       return res.status(404).json({ msg: 'Note not found' });
     }
     
     // Make sure user owns the note
     if (note.user.toString() !== req.user.id) {
+      console.log('User not authorized. Note user:', note.user, 'Request user:', req.user.id);
       return res.status(401).json({ msg: 'User not authorized' });
     }
     
-    // Update note
-    note = await Note.findByIdAndUpdate(
-      req.params.id,
-      { $set: noteFields },
-      { new: true } // Return the updated document
-    );
+    // Update note fields directly
+    if (req.body.title !== undefined) note.title = req.body.title;
+    if (req.body.content !== undefined) note.content = req.body.content;
+    note.updatedAt = Date.now();
     
-    console.log('Updated note:', note);
+    // Save the updated note
+    await note.save();
+    
+    console.log('Note updated successfully:', note);
     res.json(note);
   } catch (err) {
-    console.error('Error updating note:', err.message);
-    if (err.kind === 'ObjectId') {
-      return res.status(404).json({ msg: 'Note not found' });
-    }
-    res.status(500).json({ msg: 'Server error', error: err.message });
+    console.error('Server error updating note:', err);
+    res.status(500).json({ msg: 'Server error updating note', error: err.message });
   }
 });
 
@@ -163,6 +156,53 @@ router.get('/search', auth, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
+  }
+});
+
+// @route   POST api/notes/test-update/:id
+// @desc    Test route for updating notes (for debugging)
+// @access  Private
+router.post('/test-update/:id', auth, async (req, res) => {
+  try {
+    console.log('TEST UPDATE route called for note ID:', req.params.id);
+    console.log('Request body:', req.body);
+    
+    // Find the note directly
+    let note = await Note.findById(req.params.id);
+    
+    if (!note) {
+      console.log('TEST UPDATE: Note not found');
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    
+    // Make sure user owns the note
+    if (note.user.toString() !== req.user.id) {
+      console.log('TEST UPDATE: User not authorized');
+      return res.status(401).json({ error: 'Not authorized' });
+    }
+    
+    // Log current state
+    console.log('TEST UPDATE: Current note state:', note);
+    
+    // Perform direct update
+    note.title = req.body.title || note.title;
+    note.content = req.body.content || note.content;
+    note.updatedAt = Date.now();
+    
+    // Save the note
+    await note.save();
+    
+    console.log('TEST UPDATE: Note after update:', note);
+    
+    // Return success
+    res.json({
+      success: true, 
+      message: 'Note updated in test route',
+      note
+    });
+  } catch (err) {
+    console.error('TEST UPDATE ERROR:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
