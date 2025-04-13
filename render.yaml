@@ -3,9 +3,8 @@ services:
   - type: web
     name: notes-app-api
     env: node
-    plan: free
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,13 +15,12 @@ services:
       - key: PORT
         value: 5000
 
-  # Frontend service        
+  # Frontend service  
   - type: web
     name: notes-app-client
-    env: node
-    plan: free
+    env: static
     buildCommand: cd client && npm install && npm run build
-    startCommand: cd client && npm start
+    staticPublishPath: ./client/build
     envVars:
       - key: NODE_ENV
         value: production
