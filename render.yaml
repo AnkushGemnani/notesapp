@@ -19,7 +19,7 @@ services:
   - type: web
     name: notes-app-client
     env: static
-    buildCommand: cd client && npm install && npm run build
+    buildCommand: cd client && npm install --production=false && npm run build
     staticPublishPath: ./client/build
     envVars:
       - key: NODE_ENV
