@@ -70,13 +70,16 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   const { title, content } = req.body;
   
-  // Build note object
+  // Build note object with the fields that should be updated
   const noteFields = {};
-  if (title) noteFields.title = title;
-  if (content) noteFields.content = content;
+  if (title !== undefined) noteFields.title = title;
+  if (content !== undefined) noteFields.content = content;
   noteFields.updatedAt = Date.now();
   
   try {
+    console.log('Updating note with ID:', req.params.id);
+    console.log('Update fields:', noteFields);
+    
     let note = await Note.findById(req.params.id);
     
     // Check if note exists
@@ -93,16 +96,17 @@ router.put('/:id', auth, async (req, res) => {
     note = await Note.findByIdAndUpdate(
       req.params.id,
       { $set: noteFields },
-      { new: true }
+      { new: true } // Return the updated document
     );
     
+    console.log('Updated note:', note);
     res.json(note);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error updating note:', err.message);
     if (err.kind === 'ObjectId') {
       return res.status(404).json({ msg: 'Note not found' });
     }
-    res.status(500).send('Server error');
+    res.status(500).json({ msg: 'Server error', error: err.message });
   }
 });
 
