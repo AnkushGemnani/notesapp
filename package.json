@@ -1,18 +1,28 @@
 {
-  "name": "noteswebsite",
+  "name": "notesapp",
   "version": "1.0.0",
-  "description": "Notes Website with MERN Stack",
-  "main": "index.js",
+  "description": "NotesApp - Your Personal Note Taking Solution",
+  "main": "server/server.js",
   "scripts": {
-    "start": "concurrently \"cd server && npm start\" \"cd client && npm start\"",
-    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "server": "cd server && npm start",
-    "client": "cd client && npm start"
+    "start": "node server/server.js",
+    "server": "nodemon server/server.js",
+    "client": "npm start --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "cd client && npm install && npm run build",
+    "render-postbuild": "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "notes",
+    "react",
+    "mongodb",
+    "express"
+  ],
+  "author": "Ankush Gemnani",
+  "license": "MIT",
   "dependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^7.6.0"
   }
 }
