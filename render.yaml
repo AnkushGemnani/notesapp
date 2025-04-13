@@ -1,0 +1,26 @@
+services:
+  # Backend API service
+  - type: web
+    name: notesapp-api
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: 5000
+
+  # Frontend service        
+  - type: web
+    name: notesapp-client
+    env: static
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/build
+    envVars:
+      - key: NODE_ENV
+        value: production 

@@ -4,15 +4,21 @@
   "description": "Notes Website with MERN Stack",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"cd server && npm start\" \"cd client && npm start\"",
-    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "start": "node server/server.js",
     "server": "cd server && npm start",
-    "client": "cd client && npm start"
+    "client": "cd client && npm start",
+    "dev": "concurrently \"cd server && npm run server\" \"cd client && npm start\"",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ankush Gemnani",
   "license": "ISC",
   "dependencies": {
     "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": "16.x"
   }
 }

@@ -32,12 +32,23 @@ mongoose.connect(process.env.MONGO_URI, mongooseOptions)
 const apiRoutes = require('./routes/index');
 
 // Basic route for testing
-app.get('/', (req, res) => {
-  res.send('Notes API is running');
+app.get('/api/health', (req, res) => {
+  res.json({ message: 'Notes API is running', status: 'healthy' });
 });
 
 // API routes
 app.use('/api', apiRoutes);
+
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  // Set static folder
+  app.use(express.static(path.join(__dirname, '../client/build')));
+
+  // Any route that doesn't match API will be redirected to index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -47,15 +58,6 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
-
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
-  });
-}
 
 // Port configuration
 const PORT = process.env.PORT || 5000;
