@@ -10,4 +10,4 @@ services:
       - key: MONGO_URI
         value: mongodb+srv://d2023ankushgemnani:Riyansh%4014@cluster0.jaqfv1r.mongodb.net/notesapp?retryWrites=true&w=majority&appName=Cluster0
       - key: JWT_SECRET
-        value: mysecretnotesapp2025 
+        value: Riyansh@14 
