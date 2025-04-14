@@ -179,40 +179,62 @@ function setupMockData() {
   
   // Mock User model with in-memory storage
   const mockUsers = [];
-  User = {
-    findOne: async (query) => {
-      return mockUsers.find(u => u.email === query.email);
-    },
-    findById: async (id) => {
-      const user = mockUsers.find(u => u._id === id);
-      if (!user) return null;
-      const { password, ...userWithoutPassword } = user;
-      return {
-        ...userWithoutPassword,
-        select: () => userWithoutPassword
-      };
-    }
-  };
-  
-  // Add a mock user creation method
-  User.prototype = {};
-  User.prototype.save = async function() {
-    this._id = Date.now().toString();
-    mockUsers.push(this);
-    return this;
-  };
   
   // Create a mock user for testing
-  mockUsers.push({
+  const testUser = {
     _id: '123456789',
     name: 'Test User',
     email: 'test@example.com',
     password: '$2a$10$RJKan6UecUcjiaG7cFmDNuKNxgNPfMuKCpxAplrv.6MJqtLvIvnGS', // hashed "password123"
     createdAt: new Date(),
     comparePassword: async (candidatePassword) => {
+      // For simplicity, directly compare with 'password123'
       return candidatePassword === 'password123';
     }
-  });
+  };
+  
+  mockUsers.push(testUser);
+  
+  // Define the User mock model
+  User = {
+    findOne: async (query) => {
+      console.log('Mock findOne query:', query);
+      const user = mockUsers.find(u => u.email === query.email);
+      console.log('Mock user found:', user ? 'Yes' : 'No');
+      return user;
+    },
+    findById: async (id) => {
+      console.log('Mock findById:', id);
+      const user = mockUsers.find(u => u._id === id);
+      
+      if (!user) {
+        console.log('No user found with ID:', id);
+        return null;
+      }
+      
+      console.log('Mock user found by ID');
+      
+      // Create a user object with select method
+      const userObj = { ...user };
+      
+      // Add a select method that returns the user without password
+      userObj.select = () => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      };
+      
+      return userObj;
+    }
+  };
+  
+  // Mock User prototype and constructor
+  User.prototype = {};
+  User.prototype.save = async function() {
+    console.log('Mock saving user:', this);
+    this._id = Date.now().toString();
+    mockUsers.push(this);
+    return this;
+  };
   
   // Mock Note model with in-memory storage
   const mockNotes = [
@@ -228,20 +250,33 @@ function setupMockData() {
   
   Note = {
     find: async (query) => {
+      console.log('Mock notes query:', query);
+      const filteredNotes = mockNotes.filter(note => note.user === query.user);
+      console.log(`Found ${filteredNotes.length} mock notes`);
+      
+      // Return an object with sort method
       return {
-        sort: () => mockNotes.filter(note => note.user === query.user)
+        sort: () => filteredNotes
       };
+    },
+    findById: async (id) => {
+      console.log('Mock findById for note:', id);
+      return mockNotes.find(note => note._id === id);
     }
   };
   
   // Add a mock note creation method
   Note.prototype = {};
   Note.prototype.save = async function() {
-    this._id = Date.now().toString();
+    console.log('Mock saving note:', this);
+    if (!this._id) {
+      this._id = Date.now().toString();
+    }
     mockNotes.push(this);
     return this;
   };
   
+  // Debug info for testing
   console.log('Mock data setup complete. You can login with email: test@example.com and password: password123');
 }
 
@@ -304,46 +339,70 @@ app.post('/api/auth/register', async (req, res) => {
 
 // Login route
 app.post('/api/auth/login', async (req, res) => {
+  console.log('Login attempt with:', { email: req.body.email, passwordProvided: !!req.body.password });
+  
   const { email, password } = req.body;
 
   try {
+    // Check if required fields are provided
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ msg: 'Please provide email and password' });
+    }
+    
     // Check if MongoDB is connected
     if (!User) {
+      console.log('User model not available');
       return res.status(500).json({ msg: 'Database connection error' });
     }
 
     // Check if user exists
     const user = await User.findOne({ email });
+    
     if (!user) {
+      console.log('User not found with email:', email);
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
 
+    console.log('User found, checking password');
+    
     // Verify password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
+    try {
+      const isMatch = await user.comparePassword(password);
+      console.log('Password match result:', isMatch);
+      
+      if (!isMatch) {
+        return res.status(400).json({ msg: 'Invalid credentials' });
+      }
+    } catch (passwordErr) {
+      console.error('Error comparing password:', passwordErr);
+      return res.status(500).json({ msg: 'Error verifying credentials' });
     }
 
     // Create payload for JWT
     const payload = {
       user: {
-        id: user.id
+        id: user._id
       }
     };
 
     // Sign token
     jwt.sign(
       payload,
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'defaultsecret',
       { expiresIn: '24h' },
       (err, token) => {
-        if (err) throw err;
+        if (err) {
+          console.error('JWT signing error:', err);
+          return res.status(500).json({ msg: 'Error creating token' });
+        }
+        console.log('Login successful, token generated');
         res.json({ token });
       }
     );
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Login error:', err);
+    res.status(500).json({ msg: 'Server error during login', error: err.message });
   }
 });
 
