@@ -3,6 +3,8 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Note = require('../models/Note');
 
+// Static routes - these need to be defined FIRST
+
 // @route   GET api/notes
 // @desc    Get all notes for a user
 // @access  Private
@@ -10,6 +12,27 @@ router.get('/', auth, async (req, res) => {
   try {
     const notes = await Note.find({ user: req.user.id }).sort({ createdAt: -1 });
     res.json(notes);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// @route   POST api/notes
+// @desc    Create a note
+// @access  Private
+router.post('/', auth, async (req, res) => {
+  const { title, content } = req.body;
+  
+  try {
+    const newNote = new Note({
+      title,
+      content,
+      user: req.user.id
+    });
+    
+    const note = await newNote.save();
+    res.json(note);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -89,11 +112,18 @@ router.post('/test-update/:id', auth, async (req, res) => {
   }
 });
 
+// Dynamic routes with parameters - these must come AFTER all static routes
+
 // @route   GET api/notes/:id
 // @desc    Get a specific note
 // @access  Private
 router.get('/:id', auth, async (req, res) => {
   try {
+    // Validate that id is a valid MongoDB ObjectId format to avoid path-to-regexp issues
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(404).json({ msg: 'Invalid note ID format' });
+    }
+    
     const note = await Note.findById(req.params.id);
     
     // Check if note exists
@@ -116,27 +146,6 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// @route   POST api/notes
-// @desc    Create a note
-// @access  Private
-router.post('/', auth, async (req, res) => {
-  const { title, content } = req.body;
-  
-  try {
-    const newNote = new Note({
-      title,
-      content,
-      user: req.user.id
-    });
-    
-    const note = await newNote.save();
-    res.json(note);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
-  }
-});
-
 // @route   PUT api/notes/:id
 // @desc    Update a note
 // @access  Private
@@ -144,6 +153,11 @@ router.put('/:id', auth, async (req, res) => {
   try {
     console.log('PUT request received for note ID:', req.params.id);
     console.log('Request body:', req.body);
+    
+    // Validate that id is a valid MongoDB ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(404).json({ msg: 'Invalid note ID format' });
+    }
     
     // Find the note by ID
     let note = await Note.findById(req.params.id);
@@ -181,6 +195,11 @@ router.put('/:id', auth, async (req, res) => {
 // @access  Private
 router.delete('/:id', auth, async (req, res) => {
   try {
+    // Validate that id is a valid MongoDB ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(404).json({ msg: 'Invalid note ID format' });
+    }
+    
     const note = await Note.findById(req.params.id);
     
     // Check if note exists
