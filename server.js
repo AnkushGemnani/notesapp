@@ -7,6 +7,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
 
 // Log environment variables (without sensitive info)
 console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -407,9 +408,72 @@ if (process.env.NODE_ENV === 'production') {
   // Set static folder
   app.use(express.static(path.join(__dirname, 'client/build')));
 
-  // Any route that doesn't match API will be redirected to index.html
+  // Check if client/build directory exists
+  const clientBuildPath = path.resolve(__dirname, 'client/build');
+  const indexPath = path.resolve(clientBuildPath, 'index.html');
+  
+  let clientBuildExists = false;
+  try {
+    clientBuildExists = fs.existsSync(clientBuildPath) && fs.existsSync(indexPath);
+    console.log(`Client build directory ${clientBuildExists ? 'exists' : 'does not exist'}`);
+  } catch (err) {
+    console.error('Error checking for client build directory:', err);
+  }
+
+  // Any route that doesn't match API will be redirected to index.html if it exists
+  // or show a fallback page if not
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'client/build', 'index.html'));
+    if (clientBuildExists) {
+      res.sendFile(path.resolve(__dirname, 'client/build', 'index.html'));
+    } else {
+      // Send a basic HTML page if client build doesn't exist
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Notes App API</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+            h1 { color: #2c3e50; }
+            .card { background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            pre { background: #f1f1f1; padding: 10px; border-radius: 4px; overflow-x: auto; }
+            .alert { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; }
+            .info { background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 4px; }
+            .success { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <h1>Notes App API</h1>
+          <div class="card info">
+            <h2>API is Running</h2>
+            <p>The API server is running correctly, but the client build was not found.</p>
+            <p>This is likely because:</p>
+            <ul>
+              <li>The build process didn't complete correctly</li>
+              <li>The build files are in a different location</li>
+            </ul>
+          </div>
+          
+          <div class="card success">
+            <h2>Available Endpoints</h2>
+            <ul>
+              <li><code>/api/auth/register</code> - Register a new user</li>
+              <li><code>/api/auth/login</code> - Login with email/password</li>
+              <li><code>/api/auth/user</code> - Get current user info</li>
+              <li><code>/api/notes</code> - Get all notes or create new ones</li>
+              <li><code>/api/health</code> - API health check</li>
+            </ul>
+          </div>
+          
+          <div class="card">
+            <h2>Test Account</h2>
+            <p>You can use these credentials for testing:</p>
+            <pre>Email: test@example.com\nPassword: password123</pre>
+          </div>
+        </body>
+        </html>
+      `);
+    }
   });
 }
 
