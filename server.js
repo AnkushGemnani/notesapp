@@ -139,6 +139,60 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Debug route to check if mock data is working
+app.get('/api/debug', (req, res) => {
+  try {
+    // Check if User model exists
+    if (!User) {
+      return res.status(500).json({ error: 'User model not initialized' });
+    }
+    
+    // Try to find the test user
+    User.findOne({ email: 'test@example.com' })
+      .then(user => {
+        if (!user) {
+          return res.json({ 
+            status: 'error', 
+            message: 'Test user not found',
+            mockDataActive: typeof setupMockData === 'function'
+          });
+        }
+        
+        // Return basic info about the test user (without password)
+        res.json({
+          status: 'success',
+          message: 'Test user is available',
+          user: {
+            _id: user._id,
+            email: user.email,
+            name: user.name || 'Test User'
+          },
+          loginInfo: {
+            route: '/api/auth/login',
+            method: 'POST',
+            body: {
+              email: 'test@example.com',
+              password: 'password123'
+            }
+          }
+        });
+      })
+      .catch(err => {
+        res.status(500).json({ 
+          status: 'error', 
+          message: 'Error finding test user',
+          error: err.message
+        });
+      });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Server error in debug route',
+      error: err.message
+    });
+  }
+});
+
 // Optional MongoDB connection
 if (process.env.MONGO_URI) {
   try {
@@ -187,8 +241,9 @@ function setupMockData() {
     email: 'test@example.com',
     password: '$2a$10$RJKan6UecUcjiaG7cFmDNuKNxgNPfMuKCpxAplrv.6MJqtLvIvnGS', // hashed "password123"
     createdAt: new Date(),
-    comparePassword: async (candidatePassword) => {
-      // For simplicity, directly compare with 'password123'
+    comparePassword: async function(candidatePassword) {
+      // For mock user, always return true for password "password123"
+      console.log('Mock comparePassword called with:', candidatePassword);
       return candidatePassword === 'password123';
     }
   };
