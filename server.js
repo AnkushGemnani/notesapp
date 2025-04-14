@@ -14,6 +14,18 @@ console.log('PORT:', process.env.PORT);
 console.log('MONGO_URI set:', !!process.env.MONGO_URI);
 console.log('JWT_SECRET set:', !!process.env.JWT_SECRET);
 
+// Validate MongoDB URI format
+if (process.env.MONGO_URI) {
+  // Basic validation for MongoDB URI format
+  const validMongoURI = /^mongodb(\+srv)?:\/\/[^\/]+\/[^\/]+(\?.*)?$/.test(process.env.MONGO_URI);
+  if (!validMongoURI) {
+    console.error('ERROR: Invalid MongoDB URI format. URI must include hostname, domain name, and database name.');
+    console.error('Example format: mongodb+srv://username:password@cluster0.mongodb.net/database_name');
+  } else {
+    console.log('MongoDB URI format appears valid');
+  }
+}
+
 // Initialize Express app
 const app = express();
 
@@ -129,6 +141,8 @@ app.get('/api/health', (req, res) => {
 // Optional MongoDB connection
 if (process.env.MONGO_URI) {
   try {
+    console.log('Attempting to connect to MongoDB...');
+    
     mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true
@@ -141,11 +155,93 @@ if (process.env.MONGO_URI) {
     })
     .catch(err => {
       console.error('MongoDB connection error:', err);
-      // Continue running the app even if MongoDB fails
+      console.error('Connection string format issue. Please check your MONGO_URI environment variable.');
+      console.error('Make sure it follows the format: mongodb+srv://username:password@hostname/database_name');
+      
+      // Set up mock data for development/testing
+      setupMockData();
     });
   } catch (err) {
     console.error('Error setting up MongoDB connection:', err);
+    
+    // Set up mock data for development/testing
+    setupMockData();
   }
+} else {
+  console.warn('MONGO_URI not provided - running with mock data');
+  setupMockData();
+}
+
+// Function to set up mock data when MongoDB is not available
+function setupMockData() {
+  console.log('Setting up mock data for testing...');
+  
+  // Mock User model with in-memory storage
+  const mockUsers = [];
+  User = {
+    findOne: async (query) => {
+      return mockUsers.find(u => u.email === query.email);
+    },
+    findById: async (id) => {
+      const user = mockUsers.find(u => u._id === id);
+      if (!user) return null;
+      const { password, ...userWithoutPassword } = user;
+      return {
+        ...userWithoutPassword,
+        select: () => userWithoutPassword
+      };
+    }
+  };
+  
+  // Add a mock user creation method
+  User.prototype = {};
+  User.prototype.save = async function() {
+    this._id = Date.now().toString();
+    mockUsers.push(this);
+    return this;
+  };
+  
+  // Create a mock user for testing
+  mockUsers.push({
+    _id: '123456789',
+    name: 'Test User',
+    email: 'test@example.com',
+    password: '$2a$10$RJKan6UecUcjiaG7cFmDNuKNxgNPfMuKCpxAplrv.6MJqtLvIvnGS', // hashed "password123"
+    createdAt: new Date(),
+    comparePassword: async (candidatePassword) => {
+      return candidatePassword === 'password123';
+    }
+  });
+  
+  // Mock Note model with in-memory storage
+  const mockNotes = [
+    {
+      _id: '1',
+      title: 'Welcome to Notes App',
+      content: 'This is a test note. The app is currently running in mock mode because MongoDB connection failed.',
+      user: '123456789',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ];
+  
+  Note = {
+    find: async (query) => {
+      return {
+        sort: () => mockNotes.filter(note => note.user === query.user)
+      };
+    }
+  };
+  
+  // Add a mock note creation method
+  Note.prototype = {};
+  Note.prototype.save = async function() {
+    this._id = Date.now().toString();
+    mockNotes.push(this);
+    return this;
+  };
+  
+  console.log('Mock data setup complete. You can login with email: test@example.com and password: password123');
 }
 
 // Register route
